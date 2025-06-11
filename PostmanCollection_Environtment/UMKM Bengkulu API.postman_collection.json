@@ -1,0 +1,420 @@
+{
+	"info": {
+		"_postman_id": "5b2dfb0e-1d33-4937-be42-440275b1683c",
+		"name": "UMKM Bengkulu API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Autentikasi UMKM",
+			"item": [
+				{
+					"name": "POST Register UMKM",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJson = pm.response.json();\r",
+									"if (responseJson.umkm_profile && responseJson.umkm_profile.username) {\r",
+									"    pm.environment.set(\"testUsername\", responseJson.umkm_profile.username);\r",
+									"    console.log(\"Registered username:\", responseJson.umkm_profile.username);\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"umkm.newnew@example.com\",\r\n    \"password\": \"passwordumkm123\",\r\n    \"nama_pelaku\": \"Celvin Celsiuss presemt\",\r\n    \"nama_perusahaan_umkm\": \"Donat Nikmat Bengkulu\",\r\n    \"nomor_whatsapp\": \"6283244567890\"\r\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Login UMKM",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJson = pm.response.json();\r",
+									"if (responseJson.token) {\r",
+									"    pm.environment.set(\"jwtToken\", responseJson.token);\r",
+									"    console.log(\"JWT Token:\", responseJson.token);\r",
+									"}\r",
+									"if (responseJson.umkm_profile && responseJson.umkm_profile.id) {\r",
+									"    pm.environment.set(\"umkmId\", responseJson.umkm_profile.id);\r",
+									"    console.log(\"UMKM ID:\", responseJson.umkm_profile.id);\r",
+									"}\r",
+									"if (responseJson.umkm_profile && responseJson.umkm_profile.username) {\r",
+									"    pm.environment.set(\"username\", responseJson.umkm_profile.username);\r",
+									"    console.log(\"UMKM Username:\", responseJson.umkm_profile.username);\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"umkm.new@example.com\",\r\n    \"password\": \"passwordumkm123\"\r\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Dashboard UMKM (Protected)",
+			"item": [
+				{
+					"name": "GET Profil UMKM",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer Token {{jwtToken}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/umkm/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"umkm",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "POST Tambah Produk",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const responseJson = pm.response.json();\r",
+									"if (responseJson.product && responseJson.product.id) {\r",
+									"    pm.environment.set(\"productId\", responseJson.product.id);\r",
+									"    console.log(\"Created Product ID:\", responseJson.product.id);\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "default"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer Token {{jwtToken}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"nama_produk\": \"Kripik Singkong Original\",\r\n    \"deskripsi_produk\": \"Kripik singkong renyah dengan rasa original khas Bengkulu.\",\r\n    \"harga_produk\": 12000,\r\n    \"gambar_url\": \"https://placehold.co/600x400/FF5733/FFFFFF?text=Kripik+Singkong\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/umkm/products",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"umkm",
+								"products"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Daftar Produk UMKM",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer Token {{jwtToken}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/umkm/products",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"umkm",
+								"products"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Edit Produk",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "default"
+							},
+							{
+								"key": "Authorization",
+								"value": ": Bearer Token {{jwtToken}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"nama_produk\": \"Kripik Singkong Balado Extra Pedas\",\r\n    \"harga_produk\": 17500\r\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/umkm/products/{{productId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"umkm",
+								"products",
+								"{{productId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DELETE Hapus Produk",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer Token {{jwtToken}}",
+								"type": "default"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/umkm/products/{{productId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"umkm",
+								"products",
+								"{{productId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{jwtToken}}",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Akses Publik",
+			"item": [
+				{
+					"name": "Get All UMKM (Landing Page)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/public/umkms",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"umkms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get UMKM Store by Username",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/public/umkms/{{testUsername}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"umkms",
+								"{{testUsername}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Submit Product Feedback",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"nama_pembeli\": \"Andi Pembeli\",\r\n    \"rating\": 5,\r\n    \"komentar\": \"Produknya sangat enak dan renyah, recommended!\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/public/feedback/{{productId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"feedback",
+								"{{productId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Product Feedback",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/public/feedback/{{productId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"feedback",
+								"{{productId}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
