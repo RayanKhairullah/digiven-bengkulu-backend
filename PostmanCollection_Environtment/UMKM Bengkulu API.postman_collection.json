@@ -25,6 +25,11 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {
+							"content-type": true
+						}
+					},
 					"request": {
 						"method": "POST",
 						"header": [
@@ -36,7 +41,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"email\": \"umkm.newnew@example.com\",\r\n    \"password\": \"passwordumkm123\",\r\n    \"nama_pelaku\": \"Celvin Celsiuss presemt\",\r\n    \"nama_perusahaan_umkm\": \"Donat Nikmat Bengkulu\",\r\n    \"nomor_whatsapp\": \"6283244567890\"\r\n}"
+							"raw": "{\r\n    \"email\": \"umkm.brand@example.com\",\r\n    \"password\": \"passwordumkm123\",\r\n    \"nama_pelaku\": \"rayn presemt\",\r\n    \"nama_perusahaan_umkm\": \"Kue Nikmat Bengkulu\",\r\n    \"nomor_whatsapp\": \"6283247659870\"\r\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/auth/register",
@@ -78,6 +83,11 @@
 							}
 						}
 					],
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {
+							"content-type": true
+						}
+					},
 					"request": {
 						"method": "POST",
 						"header": [
@@ -89,7 +99,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"email\": \"umkm.new@example.com\",\r\n    \"password\": \"passwordumkm123\"\r\n}"
+							"raw": "{\r\n    \"email\": \"umkm.brand@example.com\",\r\n    \"password\": \"passwordumkm123\"\r\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/auth/login",
@@ -105,6 +115,154 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Verifikasi Email",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/verify-email?token=b8946d79-04a0-4d0f-8699-9e8845c98072",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"verify-email"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "b8946d79-04a0-4d0f-8699-9e8845c98072"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Resend Verification",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"email\": \"umkm.brand@example.com\"}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/resend-verification",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"resend-verification"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"email\": \"umkm.brand@example.com\"}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/forgot-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"forgot-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Reset Password",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"token\": \"25f460f1-2f81-4515-ab8f-14a10e7719a0\",\r\n    \"newPassword\": \"password_baru_yang_kuat\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/reset-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"reset-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Password",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwtToken}}",
+								"type": "default"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"currentPassword\": \"password_baru_yang_kuat\",\r\n    \"newPassword\": \"password_baru_yang_sangat_kuat\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/umkm/update-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"umkm",
+								"update-password"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -115,13 +273,7 @@
 					"name": "GET Profil UMKM",
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer Token {{jwtToken}}",
-								"type": "default"
-							}
-						],
+						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/umkm/profile",
 							"host": [
@@ -156,21 +308,10 @@
 					],
 					"request": {
 						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "default"
-							},
-							{
-								"key": "Authorization",
-								"value": "Bearer Token {{jwtToken}}",
-								"type": "default"
-							}
-						],
+						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"nama_produk\": \"Kripik Singkong Original\",\r\n    \"deskripsi_produk\": \"Kripik singkong renyah dengan rasa original khas Bengkulu.\",\r\n    \"harga_produk\": 12000,\r\n    \"gambar_url\": \"https://placehold.co/600x400/FF5733/FFFFFF?text=Kripik+Singkong\"\r\n}",
+							"raw": "{\r\n    \"nama_produk\": \"Kue Coklat\",\r\n    \"deskripsi_produk\": \"kue coklat rasa khas Bengkulu.\",\r\n    \"harga_produk\": 12000,\r\n    \"gambar_url\": \"https://placehold.co/600x400/FF5733/FFFFFF?text=Kripik+Singkong\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -196,13 +337,7 @@
 					"name": "GET Daftar Produk UMKM",
 					"request": {
 						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer Token {{jwtToken}}",
-								"type": "default"
-							}
-						],
+						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/umkm/products",
 							"host": [
@@ -226,11 +361,6 @@
 							{
 								"key": "Content-Type",
 								"value": "application/json",
-								"type": "default"
-							},
-							{
-								"key": "Authorization",
-								"value": ": Bearer Token {{jwtToken}}",
 								"type": "default"
 							}
 						],
@@ -258,13 +388,7 @@
 					"name": "DELETE Hapus Produk",
 					"request": {
 						"method": "DELETE",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer Token {{jwtToken}}",
-								"type": "default"
-							}
-						],
+						"header": [],
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/umkm/products/{{productId}}",
 							"host": [

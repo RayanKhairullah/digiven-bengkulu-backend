@@ -108,6 +108,19 @@ CREATE TABLE public.feedback (
    SUPABASE_URL=https://<YOUR_PROJECT_REF>.supabase.co
    SUPABASE_ANON_KEY=eyJhbGci...<YOUR_ANON_KEY>
    JWT_SECRET=super_secret_key_yang_sangat_panjang_dan_acak
+
+   EMAIL_HOST=smtp.gmail.com
+   EMAIL_PORT=587        
+   EMAIL_SECURE=false   
+   EMAIL_USER=email_dari_app_password
+   EMAIL_PASS=16_digit_karakter_tanpa_spaso
+   EMAIL_FROM="no-reply@umkmbengkulu.com"
+   
+   FRONTEND_URL=http://localhost:5173 #contoh
+
+# EMAIL_PASS=hlwgqlpemcdptsem
+
+FRONTEND_URL=http://localhost:5173
    ```
 
 5. **Jalankan server**
@@ -147,6 +160,30 @@ CREATE TABLE public.feedback (
     "password": "password123"
   }
   ```
+* `GET /verify-email?token=b8xx79-04a0-4d0f-8699-9exxxxc98072`
+
+* `POST /resend-verification`:
+
+  ```json
+  {
+    {"email": "umkm.brand@example.com"}
+  }
+  ```
+  * `POST /forgot-password`:
+
+  ```json
+  {
+    {"email": "umkm.brand@example.com"}
+  }
+  ```
+  * `POST /reset-password`:
+
+  ```json
+  {
+      "token": "25xxxxf1-2f81-4515-ab8f-14axxxx719a0",
+      "newPassword": "password_baru_yang_kuat"
+  }
+  ```
 
 ---
 
@@ -154,6 +191,14 @@ CREATE TABLE public.feedback (
 
 * **Header**: `Authorization: Bearer <JWT>`
 * `GET /profile` – Profil UMKM saat login.
+* `PUT /update-password` – Update Password:
+
+  ```json
+  {
+      "currentPassword": "password_baru_yang_kuat",
+      "newPassword": "password_baru_yang_sangat_kuat"
+  }
+  ```
 * `POST /products` – Tambah produk:
 
   ```json

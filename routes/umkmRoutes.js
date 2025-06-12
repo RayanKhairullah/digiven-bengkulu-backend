@@ -1,3 +1,5 @@
+// routes/umkmRoutes.js
+
 const express = require('express');
 const router = express.Router();
 const umkmController = require('../controllers/umkmController');
@@ -17,5 +19,8 @@ router.put('/products/:id', authenticateToken, umkmController.updateProduct);
 
 // Route untuk menghapus produk berdasarkan ID
 router.delete('/products/:id', authenticateToken, umkmController.deleteProduct);
+
+// Route untuk memperbarui kata sandi user yang sedang login
+router.put('/update-password', authenticateToken, umkmController.updatePassword);
 
 module.exports = router;

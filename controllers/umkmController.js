@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const bcrypt = require('bcryptjs'); // Impor bcryptjs untuk hashing password
 
 // ===========================================
 // INISIALISASI SUPABASE
@@ -12,12 +13,20 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Middleware/cek internal untuk verifikasi email
+const checkEmailVerified = (req, res, next) => {
+    if (!req.user || !req.user.is_verified) {
+        return res.status(403).json({ error: 'Akses Ditolak: Email Anda belum diverifikasi. Mohon verifikasi email Anda terlebih dahulu.' });
+    }
+    next();
+};
+
 /**
  * Controller untuk mendapatkan profil UMKM yang sedang login.
  */
-exports.getUmkmProfile = async (req, res) => {
+exports.getUmkmProfile = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
     try {
-        const { umkmId } = req.user; // umkmId dari payload token JWT
+        const { umkmId } = req.user;
 
         const { data: umkm, error } = await supabase
             .from('umkms')
@@ -38,14 +47,14 @@ exports.getUmkmProfile = async (req, res) => {
         console.error('Kesalahan server saat get UMKM profile:', error);
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
-};
+}];
 
 /**
  * Controller untuk menambah produk baru.
  */
-exports.addProduct = async (req, res) => {
+exports.addProduct = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
     const { nama_produk, deskripsi_produk, harga_produk, gambar_url } = req.body;
-    const { umkmId } = req.user; // umkmId dari payload token JWT
+    const { umkmId } = req.user;
 
     if (!nama_produk || !harga_produk) {
         return res.status(400).json({ error: 'Nama produk dan harga wajib diisi.' });
@@ -74,20 +83,20 @@ exports.addProduct = async (req, res) => {
         console.error('Kesalahan server saat tambah produk:', error);
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
-};
+}];
 
 /**
  * Controller untuk mendapatkan daftar produk UMKM yang sedang login.
  */
-exports.getUmkmProducts = async (req, res) => {
+exports.getUmkmProducts = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
     try {
-        const { umkmId } = req.user; // umkmId dari payload token JWT
+        const { umkmId } = req.user;
 
         const { data: products, error } = await supabase
             .from('products')
             .select('*')
             .eq('umkm_id', umkmId)
-            .order('created_at', { ascending: false }); // Urutkan dari yang terbaru
+            .order('created_at', { ascending: false });
 
         if (error) {
             console.error('Supabase error saat get produk UMKM:', error);
@@ -99,18 +108,17 @@ exports.getUmkmProducts = async (req, res) => {
         console.error('Kesalahan server saat get produk UMKM:', error);
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
-};
+}];
 
 /**
  * Controller untuk mengedit produk.
  */
-exports.updateProduct = async (req, res) => {
+exports.updateProduct = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
     const productId = req.params.id;
-    const { umkmId } = req.user; // umkmId dari payload token JWT
-    const updates = req.body; // Data update produk
+    const { umkmId } = req.user;
+    const updates = req.body;
 
     try {
-        // Pastikan UMKM yang sedang login adalah pemilik produk ini
         const { data: existingProduct, error: productCheckError } = await supabase
             .from('products')
             .select('umkm_id')
@@ -146,17 +154,16 @@ exports.updateProduct = async (req, res) => {
         console.error('Kesalahan server saat update produk:', error);
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
-};
+}];
 
 /**
  * Controller untuk menghapus produk.
  */
-exports.deleteProduct = async (req, res) => {
+exports.deleteProduct = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
     const productId = req.params.id;
-    const { umkmId } = req.user; // umkmId dari payload token JWT
+    const { umkmId } = req.user;
 
     try {
-        // Pastikan UMKM yang sedang login adalah pemilik produk ini
         const { data: existingProduct, error: productCheckError } = await supabase
             .from('products')
             .select('umkm_id')
@@ -188,6 +195,62 @@ exports.deleteProduct = async (req, res) => {
         res.status(200).json({ message: 'Produk berhasil dihapus!' });
     } catch (error) {
         console.error('Kesalahan server saat delete produk:', error);
+        res.status(500).json({ error: 'Kesalahan server internal.' });
+    }
+}];
+
+
+/**
+ * Controller untuk memperbarui kata sandi user yang sedang login.
+ */
+exports.updatePassword = async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const { userId } = req.user; // userId dari payload token JWT
+
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Kata sandi saat ini dan kata sandi baru wajib diisi.' });
+    }
+
+    try {
+        // 1. Ambil user dari database
+        const { data: user, error: findUserError } = await supabase
+            .from('users')
+            .select('password')
+            .eq('id', userId)
+            .single();
+
+        if (findUserError && findUserError.code === 'PGRST116') { // Seharusnya tidak terjadi karena sudah diautentikasi
+            return res.status(404).json({ error: 'User tidak ditemukan.' });
+        }
+        if (findUserError) {
+            console.error('Supabase error saat update password (find user):', findUserError);
+            return res.status(500).json({ error: 'Kesalahan database.' });
+        }
+
+        // 2. Bandingkan kata sandi saat ini
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Kata sandi saat ini salah.' });
+        }
+
+        // 3. Hash kata sandi baru
+        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+        // 4. Perbarui kata sandi di database
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({ password: hashedNewPassword })
+            .eq('id', userId);
+
+        if (updateError) {
+            console.error('Supabase error saat update password (update user):', updateError);
+            return res.status(500).json({ error: 'Gagal memperbarui kata sandi.' });
+        }
+
+        res.status(200).json({ message: 'Kata sandi berhasil diperbarui.' });
+
+    } catch (error) {
+        console.error('Kesalahan server saat update password:', error);
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
 };
