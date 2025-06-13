@@ -15,6 +15,7 @@ app.use(express.json()); // Parsing body request sebagai JSON
 // ===========================================
 const authRoutes = require('./routes/authRoutes');
 const umkmRoutes = require('./routes/umkmRoutes');
+const productPublicRoutes = require('./routes/productPublicRoutes'); 
 const umkmPublicRoutes = require('./routes/umkmPublicRoutes');
 const feedbackRoutes = require('./routes/feedbackRoutes'); 
 
@@ -26,13 +27,14 @@ app.get('/', (req, res) => {
 // Gunakan route yang telah dipisah
 app.use('/api/v1/auth', authRoutes); // Misalnya: /api/v1/auth/register, /api/v1/auth/login
 app.use('/api/v1/umkm', umkmRoutes); // Misalnya: /api/v1/umkm/profile, /api/v1/umkm/products
+app.use('/api/v1/public/products', productPublicRoutes);
 app.use('/api/v1/public/umkms', umkmPublicRoutes); // Misalnya: /api/v1/public/umkms, /api/v1/public/umkms/:username
 app.use('/api/v1/public/feedback', feedbackRoutes); // Misalnya: /api/v1/public/feedback/:productId
 
 // ===========================================
 // MULAI SERVER
 // ===========================================
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
     console.log(`Server Express.js berjalan di port ${PORT}`);
     console.log(`URL Supabase: ${process.env.SUPABASE_URL}`);

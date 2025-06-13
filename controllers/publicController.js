@@ -18,9 +18,10 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey);
  */
 exports.getAllUmkms = async (req, res) => {
     try {
+        // Mengambil semua detail UMKM termasuk kolom baru
         const { data: umkms, error } = await supabase
             .from('umkms')
-            .select('id, nama_perusahaan_umkm, username')
+            .select('id, nama_perusahaan_umkm, nomor_whatsapp, nama_pelaku, lokasi_perusahaan_umkm, jam_operasional, foto_banner_umkm, foto_profil_umkm')
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -43,10 +44,16 @@ exports.getUmkmStoreByUsername = async (req, res) => {
     const umkmUsername = req.params.username;
 
     try {
-        // 1. Ambil detail UMKM berdasarkan username
+        // 1. Ambil detail UMKM berdasarkan username (termasuk kolom baru)
         const { data: umkmProfile, error: umkmError } = await supabase
             .from('umkms')
-            .select('*') // Ambil semua detail UMKM
+            .select(`
+                *,
+                lokasi_perusahaan_umkm,
+                jam_operasional,
+                foto_banner_umkm,
+                foto_profil_umkm
+            `)
             .eq('username', umkmUsername)
             .single();
 
@@ -61,7 +68,12 @@ exports.getUmkmStoreByUsername = async (req, res) => {
         // 2. Ambil produk-produk UMKM ini
         const { data: products, error: productsError } = await supabase
             .from('products')
-            .select('*')
+            .select(`
+                *,
+                feedback (
+                    rating
+                )
+            `)
             .eq('umkm_id', umkmProfile.id)
             .order('created_at', { ascending: false });
 
@@ -71,9 +83,22 @@ exports.getUmkmStoreByUsername = async (req, res) => {
             return res.status(200).json({ umkm: umkmProfile, products: [] });
         }
 
+        // Hitung rata-rata rating untuk setiap produk
+        const productsWithAverageRating = products.map(product => {
+            const ratings = product.feedback.map(f => f.rating);
+            const averageRating = ratings.length > 0
+                ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1)
+                : 0; // Default 0 jika tidak ada feedback
+            return {
+                ...product,
+                average_rating: parseFloat(averageRating),
+                feedback: undefined // Hapus array feedback mentah jika tidak diperlukan di sini
+            };
+        });
+
         res.status(200).json({
             umkm: umkmProfile,
-            products: products
+            products: productsWithAverageRating
         });
 
     } catch (error) {
@@ -156,6 +181,118 @@ exports.getProductFeedback = async (req, res) => {
         res.status(200).json({ feedback });
     } catch (error) {
         console.error('Kesalahan server saat get feedback:', error);
+        res.status(500).json({ error: 'Kesalahan server internal.' });
+    }
+};
+
+/**
+ * Controller untuk mendapatkan semua produk dari semua UMKM.
+ * Sekarang hanya mengambil data produk esensial untuk daftar umum.
+ */
+exports.getAllProducts = async (req, res) => {
+    try {
+        const { data: products, error } = await supabase
+            .from('products')
+            .select(`
+                id,
+                nama_produk,
+                deskripsi_produk,
+                harga_produk,
+                gambar_url,
+                created_at
+            `)
+            .order('created_at', { ascending: false }); // Urutkan dari yang terbaru
+
+        if (error) {
+            console.error('Supabase error saat get all products:', error);
+            return res.status(500).json({ error: 'Gagal mengambil daftar semua produk.' });
+        }
+
+        // Jika tidak ada produk, kembalikan array kosong
+        if (!products) {
+            return res.status(200).json({ products: [] });
+        }
+
+        // Tidak perlu menghitung average_rating di sini lagi
+        res.status(200).json({ products: products });
+
+    } catch (error) {
+        console.error('Kesalahan server saat get all products:', error);
+        res.status(500).json({ error: 'Kesalahan server internal.' });
+    }
+};
+
+/**
+ * Controller untuk mendapatkan detail satu produk berdasarkan ID.
+ * Termasuk detail UMKM pemilik dan daftar feedback.
+ */
+exports.getSingleProductDetail = async (req, res) => {
+    const productId = req.params.productId;
+
+    try {
+        // 1. Ambil detail produk berdasarkan ID, join dengan UMKM dan feedback
+        const { data: product, error: productError } = await supabase
+            .from('products')
+            .select(`
+                *,
+                umkms (
+                    id,
+                    nama_perusahaan_umkm,
+                    nomor_whatsapp,
+                    nama_pelaku,
+                    foto_profil_umkm,
+                    lokasi_perusahaan_umkm,
+                    jam_operasional
+                ),
+                feedback (
+                    rating,
+                    nama_pembeli,
+                    komentar,
+                    created_at
+                )
+            `)
+            .eq('id', productId)
+            .single();
+
+        if (productError && productError.code === 'PGRST116') {
+            return res.status(404).json({ error: 'Produk tidak ditemukan.' });
+        }
+        if (productError) {
+            console.error('Supabase error saat get single product:', productError);
+            return res.status(500).json({ error: 'Kesalahan database saat mengambil detail produk.' });
+        }
+
+        // Hitung rata-rata rating dari feedback
+        const ratings = product.feedback.map(f => f.rating);
+        const averageRating = ratings.length > 0
+            ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1)
+            : 0; // Default 0 jika tidak ada feedback
+
+        // Siapkan respons dengan rata-rata rating
+        const responseProduct = {
+            id: product.id,
+            nama_produk: product.nama_produk,
+            deskripsi_produk: product.deskripsi_produk,
+            harga_produk: product.harga_produk,
+            gambar_url: product.gambar_url, // Ini sekarang akan menjadi array
+            created_at: product.created_at,
+            umkm: {
+                id: product.umkms.id,
+                nama_perusahaan_umkm: product.umkms.nama_perusahaan_umkm,
+                nomor_whatsapp: product.umkms.nomor_whatsapp,
+                nama_pelaku: product.umkms.nama_pelaku,
+                lokasi_perusahaan_umkm: product.umkms.lokasi_perusahaan_umkm,
+                jam_operasional: product.umkms.jam_operasional,
+                foto_profil_umkm: product.umkms.foto_profil_umkm, // Jika kolom ini ada di DB
+            },
+            average_rating: parseFloat(averageRating),
+            feedback: product.feedback // Feedback lengkap
+        };
+
+        res.status(200).json({ product: responseProduct });
+
+    } catch (error) {
+        console.error('Kesalahan server saat get single product detail:', error);
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
 };

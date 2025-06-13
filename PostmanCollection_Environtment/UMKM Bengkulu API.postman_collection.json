@@ -122,7 +122,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/api/v1/auth/verify-email?token=b8946d79-04a0-4d0f-8699-9e8845c98072",
+							"raw": "{{baseUrl}}/api/v1/auth/verify-email?token=4b8790da-8b22-4c02-8902-919a7ad9a56b",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -135,7 +135,7 @@
 							"query": [
 								{
 									"key": "token",
-									"value": "b8946d79-04a0-4d0f-8699-9e8845c98072"
+									"value": "4b8790da-8b22-4c02-8902-919a7ad9a56b"
 								}
 							]
 						}
@@ -235,6 +235,35 @@
 			"name": "Dashboard UMKM (Protected)",
 			"item": [
 				{
+					"name": "Complatte Profil UMKM",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"nama_pelaku\": \"Rayan UMKM\",\r\n    \"nama_perusahaan_umkm\": \"Kue Crosouces\",\r\n    \"nomor_whatsapp\": \"6281234567890\",\r\n    \"lokasi_perusahaan_umkm\": \"https://maps.app.goo.gl/contoh-lokasi-bengkulu\",\r\n    \"jam_operasional\": \"Senin-Jumat 09:00-18:00, Sabtu 10:00-15:00\",\r\n    \"foto_banner_umkm\": [\r\n        \"https://placehold.co/800x200/FF0000/FFFFFF?text=Banner+1\",\r\n        \"https://placehold.co/800x200/00FF00/FFFFFF?text=Banner+2\"\r\n    ],\r\n    \"foto_profil_umkm\": \"https://placehold.co/100x100/CCCCCC/000000?text=Profil+UMKM\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/umkm/profile",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"umkm",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "GET Profil UMKM",
 					"request": {
 						"method": "GET",
@@ -261,7 +290,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"currentPassword\": \"password_baru_yang_kuat\",\r\n    \"newPassword\": \"password_baru_yang_sangat_kuat\"\r\n}",
+							"raw": "{\r\n    \"currentPassword\": \"passwordumkm123\",\r\n    \"newPassword\": \"password_baru_yang_sangat_kuat\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -305,7 +334,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"nama_produk\": \"Kue Coklat\",\r\n    \"deskripsi_produk\": \"kue coklat rasa khas Bengkulu.\",\r\n    \"harga_produk\": 12000,\r\n    \"gambar_url\": \"https://placehold.co/600x400/FF5733/FFFFFF?text=Kripik+Singkong\"\r\n}",
+							"raw": "{\r\n    \"nama_produk\": \"Kue Coklat Spesial\",\r\n    \"deskripsi_produk\": \"kue coklat rasa khas Bengkulu dengan resep rahasia.\",\r\n    \"harga_produk\": 15000,\r\n    \"gambar_url\": [\r\n        \"https://placehold.co/600x400/FF5733/FFFFFF?text=Kue+Coklat+1\",\r\n        \"https://placehold.co/600x400/33FF57/FFFFFF?text=Kue+Coklat+2\",\r\n        \"https://placehold.co/600x400/5733FF/FFFFFF?text=Kue+Coklat+3\"\r\n    ]\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -435,7 +464,7 @@
 			"name": "Akses Publik",
 			"item": [
 				{
-					"name": "Get All UMKM (Landing Page)",
+					"name": "Get All UMKM",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -476,7 +505,53 @@
 					"response": []
 				},
 				{
+					"name": "GET All Products",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/public/products",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"products"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET Detail Products",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/public/products/{{productId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"products",
+								"{{productId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Submit Product Feedback",
+					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {
+							"content-type": true
+						}
+					},
 					"request": {
 						"method": "POST",
 						"header": [

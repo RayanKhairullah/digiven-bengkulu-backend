@@ -30,7 +30,18 @@ exports.getUmkmProfile = [checkEmailVerified, async (req, res) => { // Gunakan c
 
         const { data: umkm, error } = await supabase
             .from('umkms')
-            .select('*')
+            .select(`
+                id,
+                user_id,
+                nama_pelaku,
+                nama_perusahaan_umkm,
+                username,
+                nomor_whatsapp,
+                created_at,
+                lokasi_perusahaan_umkm,
+                jam_operasional,
+                foto_banner_umkm
+            `) // Pastikan tidak ada koma di akhir baris terakhir!
             .eq('id', umkmId)
             .single();
 
@@ -50,43 +61,89 @@ exports.getUmkmProfile = [checkEmailVerified, async (req, res) => { // Gunakan c
 }];
 
 /**
- * Controller untuk menambah produk baru.
+ * Controller untuk mengupdate profil UMKM.
  */
-exports.addProduct = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
-    const { nama_produk, deskripsi_produk, harga_produk, gambar_url } = req.body;
+exports.updateUmkmProfile = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
     const { umkmId } = req.user;
-
-    if (!nama_produk || !harga_produk) {
-        return res.status(400).json({ error: 'Nama produk dan harga wajib diisi.' });
-    }
+    const { nama_pelaku, nama_perusahaan_umkm, nomor_whatsapp, lokasi_perusahaan_umkm, jam_operasional, foto_banner_umkm, foto_profil_umkm } = req.body;
 
     try {
-        const { data, error } = await supabase
+        const updateData = {};
+        if (nama_pelaku !== undefined) updateData.nama_pelaku = nama_pelaku;
+        if (nama_perusahaan_umkm !== undefined) updateData.nama_perusahaan_umkm = nama_perusahaan_umkm;
+        if (nomor_whatsapp !== undefined) updateData.nomor_whatsapp = nomor_whatsapp;
+        if (lokasi_perusahaan_umkm !== undefined) updateData.lokasi_perusahaan_umkm = lokasi_perusahaan_umkm;
+        if (jam_operasional !== undefined) updateData.jam_operasional = jam_operasional;
+        // Pastikan foto_banner_umkm adalah array jika disediakan
+        if (foto_banner_umkm !== undefined) updateData.foto_banner_umkm = Array.isArray(foto_banner_umkm) ? foto_banner_umkm : [foto_banner_umkm];
+        if (foto_profil_umkm !== undefined) updateData.foto_profil_umkm = foto_profil_umkm;
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ error: 'Tidak ada data yang disediakan untuk diperbarui.' });
+        }
+
+        const { data: updatedUmkm, error } = await supabase
+            .from('umkms')
+            .update(updateData)
+            .eq('id', umkmId)
+            .select('*')
+            .single();
+
+        if (error) {
+            console.error('Supabase error saat update UMKM profile:', error);
+            return res.status(500).json({ error: 'Gagal memperbarui profil UMKM.' });
+        }
+
+        res.status(200).json({ message: 'Profil UMKM berhasil diperbarui!', umkm: updatedUmkm });
+    } catch (error) {
+        console.error('Kesalahan server saat update UMKM profile:', error);
+        res.status(500).json({ error: 'Kesalahan server internal.' });
+    }
+}];
+
+
+/**
+ * Controller untuk menambahkan produk baru oleh UMKM.
+ */
+exports.addProduct = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
+    const { nama_produk, deskripsi_produk, harga_produk, gambar_url } = req.body; // gambar_url diharapkan array
+
+    if (!nama_produk || !deskripsi_produk || !harga_produk || !gambar_url) {
+        return res.status(400).json({ error: 'Nama, deskripsi, harga produk, dan URL gambar wajib diisi.' });
+    }
+
+    // Pastikan gambar_url adalah array, jika tidak, konversi ke array
+    const productImages = Array.isArray(gambar_url) ? gambar_url : [gambar_url];
+
+    try {
+        const { umkmId } = req.user;
+
+        const { data: newProduct, error } = await supabase
             .from('products')
             .insert({
                 umkm_id: umkmId,
                 nama_produk,
                 deskripsi_produk,
                 harga_produk,
-                gambar_url
+                gambar_url: productImages // Masukkan sebagai array
             })
             .select('*')
             .single();
 
         if (error) {
-            console.error('Supabase error saat tambah produk:', error);
+            console.error('Supabase error saat add product:', error);
             return res.status(500).json({ error: 'Gagal menambahkan produk.' });
         }
 
-        res.status(201).json({ message: 'Produk berhasil ditambahkan!', product: data });
+        res.status(201).json({ message: 'Produk berhasil ditambahkan!', product: newProduct });
     } catch (error) {
-        console.error('Kesalahan server saat tambah produk:', error);
+        console.error('Kesalahan server saat add product:', error);
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
 }];
 
 /**
- * Controller untuk mendapatkan daftar produk UMKM yang sedang login.
+ * Controller untuk mendapatkan semua produk dari UMKM yang sedang login.
  */
 exports.getUmkmProducts = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
     try {
@@ -99,106 +156,120 @@ exports.getUmkmProducts = [checkEmailVerified, async (req, res) => { // Gunakan 
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.error('Supabase error saat get produk UMKM:', error);
-            return res.status(500).json({ error: 'Gagal mengambil daftar produk.' });
+            console.error('Supabase error saat get UMKM products:', error);
+            return res.status(500).json({ error: 'Gagal mengambil daftar produk Anda.' });
         }
 
         res.status(200).json({ products });
     } catch (error) {
-        console.error('Kesalahan server saat get produk UMKM:', error);
+        console.error('Kesalahan server saat get UMKM products:', error);
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
 }];
 
 /**
- * Controller untuk mengedit produk.
+ * Controller untuk mendapatkan detail satu produk UMKM tertentu.
  */
-exports.updateProduct = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
-    const productId = req.params.id;
+exports.getUmkmProductDetail = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
+    const productId = req.params.productId;
     const { umkmId } = req.user;
-    const updates = req.body;
 
     try {
-        const { data: existingProduct, error: productCheckError } = await supabase
+        const { data: product, error } = await supabase
             .from('products')
-            .select('umkm_id')
+            .select('*')
             .eq('id', productId)
+            .eq('umkm_id', umkmId) // Pastikan produk ini milik UMKM yang login
             .single();
 
-        if (productCheckError && productCheckError.code === 'PGRST116') {
-            return res.status(404).json({ error: 'Produk tidak ditemukan.' });
+        if (error && error.code === 'PGRST116') {
+            return res.status(404).json({ error: 'Produk tidak ditemukan atau bukan milik Anda.' });
         }
-        if (productCheckError) {
-            console.error('Supabase error saat cek produk untuk update:', productCheckError);
-            return res.status(500).json({ error: 'Kesalahan database saat memverifikasi produk.' });
-        }
-
-        if (existingProduct.umkm_id !== umkmId) {
-            return res.status(403).json({ error: 'Anda tidak memiliki izin untuk mengedit produk ini.' });
+        if (error) {
+            console.error('Supabase error saat get UMKM product detail:', error);
+            return res.status(500).json({ error: 'Kesalahan database saat mengambil detail produk.' });
         }
 
-        const { data, error } = await supabase
+        res.status(200).json({ product });
+    } catch (error) {
+        console.error('Kesalahan server saat get UMKM product detail:', error);
+        res.status(500).json({ error: 'Kesalahan server internal.' });
+    }
+}];
+
+/**
+ * Controller untuk mengupdate produk UMKM.
+ */
+exports.updateProduct = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
+    const productId = req.params.productId;
+    const { nama_produk, deskripsi_produk, harga_produk, gambar_url } = req.body; // gambar_url diharapkan array
+
+    try {
+        const { umkmId } = req.user;
+
+        const updateData = {};
+        if (nama_produk !== undefined) updateData.nama_produk = nama_produk;
+        if (deskripsi_produk !== undefined) updateData.deskripsi_produk = deskripsi_produk;
+        if (harga_produk !== undefined) updateData.harga_produk = harga_produk;
+        if (gambar_url !== undefined) {
+            updateData.gambar_url = Array.isArray(gambar_url) ? gambar_url : [gambar_url];
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ error: 'Tidak ada data yang disediakan untuk diperbarui.' });
+        }
+
+        const { data: updatedProduct, error } = await supabase
             .from('products')
-            .update(updates)
+            .update(updateData)
             .eq('id', productId)
+            .eq('umkm_id', umkmId) // Pastikan produk ini milik UMKM yang login
             .select('*')
             .single();
 
+        if (error && error.code === 'PGRST116') {
+            return res.status(404).json({ error: 'Produk tidak ditemukan atau bukan milik Anda.' });
+        }
         if (error) {
-            console.error('Supabase error saat update produk:', error);
-            return res.status(500).json({ error: 'Gagal mengupdate produk.' });
+            console.error('Supabase error saat update product:', error);
+            return res.status(500).json({ error: 'Gagal memperbarui produk.' });
         }
 
-        res.status(200).json({ message: 'Produk berhasil diupdate!', product: data });
+        res.status(200).json({ message: 'Produk berhasil diperbarui!', product: updatedProduct });
     } catch (error) {
-        console.error('Kesalahan server saat update produk:', error);
+        console.error('Kesalahan server saat update product:', error);
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
 }];
 
 /**
- * Controller untuk menghapus produk.
+ * Controller untuk menghapus produk UMKM.
  */
 exports.deleteProduct = [checkEmailVerified, async (req, res) => { // Gunakan cekEmailVerified di sini
-    const productId = req.params.id;
+    const productId = req.params.productId;
     const { umkmId } = req.user;
 
     try {
-        const { data: existingProduct, error: productCheckError } = await supabase
-            .from('products')
-            .select('umkm_id')
-            .eq('id', productId)
-            .single();
-
-        if (productCheckError && productCheckError.code === 'PGRST116') {
-            return res.status(404).json({ error: 'Produk tidak ditemukan.' });
-        }
-        if (productCheckError) {
-            console.error('Supabase error saat cek produk untuk delete:', productCheckError);
-            return res.status(500).json({ error: 'Kesalahan database saat memverifikasi produk.' });
-        }
-
-        if (existingProduct.umkm_id !== umkmId) {
-            return res.status(403).json({ error: 'Anda tidak memiliki izin untuk menghapus produk ini.' });
-        }
-
         const { error } = await supabase
             .from('products')
             .delete()
-            .eq('id', productId);
+            .eq('id', productId)
+            .eq('umkm_id', umkmId); // Pastikan produk ini milik UMKM yang login
 
+        if (error && error.code === 'PGRST116') {
+            return res.status(404).json({ error: 'Produk tidak ditemukan atau bukan milik Anda.' });
+        }
         if (error) {
-            console.error('Supabase error saat delete produk:', error);
+            console.error('Supabase error saat delete product:', error);
             return res.status(500).json({ error: 'Gagal menghapus produk.' });
         }
 
         res.status(200).json({ message: 'Produk berhasil dihapus!' });
     } catch (error) {
-        console.error('Kesalahan server saat delete produk:', error);
+        console.error('Kesalahan server saat delete product:', error);
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
 }];
-
 
 /**
  * Controller untuk memperbarui kata sandi user yang sedang login.

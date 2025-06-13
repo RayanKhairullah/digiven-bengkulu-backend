@@ -8,17 +8,23 @@ const authenticateToken = require('../authMiddleware'); // Middleware untuk rute
 // Route untuk mendapatkan profil UMKM yang sedang login
 router.get('/profile', authenticateToken, umkmController.getUmkmProfile);
 
+// Route baru untuk mengupdate profil UMKM
+router.put('/profile', authenticateToken, umkmController.updateUmkmProfile);
+
 // Route untuk menambah produk baru
 router.post('/products', authenticateToken, umkmController.addProduct);
 
 // Route untuk mendapatkan semua produk dari UMKM yang sedang login
 router.get('/products', authenticateToken, umkmController.getUmkmProducts);
 
+// Route untuk mendapatkan detail satu produk UMKM tertentu
+router.get('/products/:productId', authenticateToken, umkmController.getUmkmProductDetail);
+
 // Route untuk mengupdate produk berdasarkan ID
-router.put('/products/:id', authenticateToken, umkmController.updateProduct);
+router.put('/products/:productId', authenticateToken, umkmController.updateProduct);
 
 // Route untuk menghapus produk berdasarkan ID
-router.delete('/products/:id', authenticateToken, umkmController.deleteProduct);
+router.delete('/products/:productId', authenticateToken, umkmController.deleteProduct);
 
 // Route untuk memperbarui kata sandi user yang sedang login
 router.put('/update-password', authenticateToken, umkmController.updatePassword);
