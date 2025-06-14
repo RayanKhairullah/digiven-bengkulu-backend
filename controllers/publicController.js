@@ -337,3 +337,48 @@ exports.getSingleProductDetail = async (req, res) => {
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
 };
+
+/**
+ * Controller untuk menghapus feedback produk (public).
+ * Hanya bisa menghapus feedback berdasarkan ID (tanpa autentikasi).
+ */
+exports.deleteProductFeedback = async (req, res) => {
+    const feedbackId = req.params.feedbackId;
+
+    if (!feedbackId) {
+        return res.status(400).json({ error: 'ID feedback wajib disediakan.' });
+    }
+
+    try {
+        // Cek apakah feedback ada
+        const { data: feedback, error: findError } = await supabase
+            .from('feedback')
+            .select('id')
+            .eq('id', feedbackId)
+            .single();
+
+        if (findError && findError.code === 'PGRST116') {
+            return res.status(404).json({ error: 'Feedback tidak ditemukan.' });
+        }
+        if (findError) {
+            console.error('Supabase error saat cek feedback:', findError);
+            return res.status(500).json({ error: 'Gagal menghapus feedback.' });
+        }
+
+        // Hapus feedback
+        const { error: deleteError } = await supabase
+            .from('feedback')
+            .delete()
+            .eq('id', feedbackId);
+
+        if (deleteError) {
+            console.error('Supabase error saat delete feedback:', deleteError);
+            return res.status(500).json({ error: 'Gagal menghapus feedback.' });
+        }
+
+        res.status(200).json({ message: 'Feedback berhasil dihapus.' });
+    } catch (error) {
+        console.error('Kesalahan server saat delete feedback:', error);
+        res.status(500).json({ error: 'Kesalahan server internal.' });
+    }
+};

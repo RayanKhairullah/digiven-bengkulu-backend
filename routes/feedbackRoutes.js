@@ -8,4 +8,6 @@ router.post('/:productId', feedbackLimiter, publicController.submitProductFeedba
 
 router.get('/:productId', publicController.getProductFeedback);
 
+router.delete('/:feedbackId', publicController.deleteProductFeedback);
+
 module.exports = router;
