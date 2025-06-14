@@ -1,9 +1,7 @@
-// routes/umkmRoutes.js
-
 const express = require('express');
 const router = express.Router();
 const umkmController = require('../controllers/umkmController');
-const authenticateToken = require('../authMiddleware'); // Middleware untuk rute terproteksi
+const authenticateToken = require('../authMiddleware');
 
 // Route untuk mendapatkan profil UMKM yang sedang login
 router.get('/profile', authenticateToken, umkmController.getUmkmProfile);
@@ -25,6 +23,9 @@ router.put('/products/:productId', authenticateToken, umkmController.updateProdu
 
 // Route untuk menghapus produk berdasarkan ID
 router.delete('/products/:productId', authenticateToken, umkmController.deleteProduct);
+
+// Endpoint: /api/v1/public/umkms/:username/feedback
+router.get('/feedback/:username',authenticateToken, umkmController.getAllFeedbackByUmkmUsername);
 
 // Route untuk memperbarui kata sandi user yang sedang login
 router.put('/update-password', authenticateToken, umkmController.updatePassword);

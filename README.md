@@ -133,7 +133,7 @@ CREATE TABLE public.feedback (
 
    * Import file **Postman** collection dari folder "PostmanCollection_Environtment" ke dalam **Postman** dan setup env:
 
-     * `baseUrl`: `http://localhost:3000`
+     * `baseUrl`: `http://localhost:4000`
      * `jwtToken`, `umkmId`, `username`, `productId`, `testUsername` (kosong terlebih dahulu, nanti otomatis di‐isi)
 
 ---

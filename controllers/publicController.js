@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const validator = require('validator');
 
 // ===========================================
 // INISIALISASI SUPABASE
@@ -21,7 +22,7 @@ exports.getAllUmkms = async (req, res) => {
         // Mengambil semua detail UMKM termasuk kolom baru
         const { data: umkms, error } = await supabase
             .from('umkms')
-            .select('id, nama_perusahaan_umkm, nomor_whatsapp, nama_pelaku, lokasi_perusahaan_umkm, jam_operasional, foto_banner_umkm, foto_profil_umkm')
+            .select('id, nama_perusahaan_umkm, username, nomor_whatsapp, nama_pelaku, foto_profil_umkm, lokasi_perusahaan_umkm, jam_operasional')
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -112,17 +113,43 @@ exports.getUmkmStoreByUsername = async (req, res) => {
  */
 exports.submitProductFeedback = async (req, res) => {
     const productId = req.params.productId;
-    const { nama_pembeli, rating, komentar } = req.body;
+    let { nama_pembeli, rating, komentar } = req.body;
 
+    // Validasi input dasar
     if (!productId || !rating || !nama_pembeli) {
-        return res.status(400).json({ error: 'ID Produk, nama pembeli, dan rating wajib diisi.' });
+        return res.status(400).json({
+            error: 'ID Produk, nama pembeli, dan rating wajib diisi.'
+        });
     }
-    if (rating < 1 || rating > 5) {
-        return res.status(400).json({ error: 'Rating harus antara 1 dan 5.' });
+
+    // Validasi rating harus berupa angka 1–5
+    if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+        return res.status(400).json({
+            error: 'Rating harus berupa angka antara 1 dan 5.'
+        });
+    }
+
+    // Validasi panjang nama dan komentar
+    if (nama_pembeli.length > 50) {
+        return res.status(400).json({
+            error: 'Nama pembeli tidak boleh lebih dari 50 karakter.'
+        });
+    }
+
+    if (komentar && komentar.length > 500) {
+        return res.status(400).json({
+            error: 'Komentar tidak boleh lebih dari 500 karakter.'
+        });
+    }
+
+    // Sanitasi input (XSS prevention)
+    nama_pembeli = validator.escape(nama_pembeli);
+    if (komentar) {
+        komentar = validator.escape(komentar);
     }
 
     try {
-        // Opsional: Cek apakah produk dengan productId ini ada
+        // Cek apakah produk ada
         const { data: productExists, error: productCheckError } = await supabase
             .from('products')
             .select('id')
@@ -132,12 +159,16 @@ exports.submitProductFeedback = async (req, res) => {
         if (productCheckError && productCheckError.code === 'PGRST116') {
             return res.status(404).json({ error: 'Produk tidak ditemukan.' });
         }
+
         if (productCheckError) {
             console.error('Supabase error saat cek produk untuk feedback:', productCheckError);
-            return res.status(500).json({ error: 'Kesalahan database saat memverifikasi produk untuk feedback.' });
+            return res.status(500).json({
+                error: 'Kesalahan database saat memverifikasi produk.'
+            });
         }
 
-        const { data, error } = await supabase
+        // Simpan feedback
+        const { data: feedbackData, error: insertError } = await supabase
             .from('feedback')
             .insert({
                 product_id: productId,
@@ -148,15 +179,23 @@ exports.submitProductFeedback = async (req, res) => {
             .select('*')
             .single();
 
-        if (error) {
-            console.error('Supabase error saat insert feedback:', error);
-            return res.status(500).json({ error: 'Gagal mengirimkan feedback.' });
+        if (insertError) {
+            console.error('Supabase error saat insert feedback:', insertError);
+            return res.status(500).json({
+                error: 'Gagal mengirimkan feedback ke database.'
+            });
         }
 
-        res.status(201).json({ message: 'Feedback berhasil dikirim!', feedback: data });
-    } catch (error) {
-        console.error('Kesalahan server saat kirim feedback:', error);
-        res.status(500).json({ error: 'Kesalahan server internal.' });
+        // Sukses
+        return res.status(201).json({
+            message: 'Feedback berhasil dikirim!',
+            feedback: feedbackData
+        });
+    } catch (err) {
+        console.error('Kesalahan server saat kirim feedback:', err);
+        return res.status(500).json({
+            error: 'Terjadi kesalahan server.'
+        });
     }
 };
 
@@ -238,6 +277,7 @@ exports.getSingleProductDetail = async (req, res) => {
                 umkms (
                     id,
                     nama_perusahaan_umkm,
+                    username,
                     nomor_whatsapp,
                     nama_pelaku,
                     foto_profil_umkm,
@@ -279,6 +319,7 @@ exports.getSingleProductDetail = async (req, res) => {
             umkm: {
                 id: product.umkms.id,
                 nama_perusahaan_umkm: product.umkms.nama_perusahaan_umkm,
+                username: product.umkms.username,
                 nomor_whatsapp: product.umkms.nomor_whatsapp,
                 nama_pelaku: product.umkms.nama_pelaku,
                 lokasi_perusahaan_umkm: product.umkms.lokasi_perusahaan_umkm,

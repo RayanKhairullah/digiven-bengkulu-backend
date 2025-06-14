@@ -1,17 +1,19 @@
 const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs'); // Impor bcryptjs untuk hashing password
+// const path = require('path');
 
 // ===========================================
 // INISIALISASI SUPABASE
 // ===========================================
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+// const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
     console.error("Error: SUPABASE_URL or SUPABASE_ANON_KEY is not defined.");
     // process.exit(1);
 }
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl,supabaseAnonKey);
 
 // Middleware/cek internal untuk verifikasi email
 const checkEmailVerified = (req, res, next) => {
@@ -125,7 +127,7 @@ exports.addProduct = [checkEmailVerified, async (req, res) => { // Gunakan cekEm
                 nama_produk,
                 deskripsi_produk,
                 harga_produk,
-                gambar_url: productImages // Masukkan sebagai array
+                gambar_url: productImages
             })
             .select('*')
             .single();
@@ -179,7 +181,7 @@ exports.getUmkmProductDetail = [checkEmailVerified, async (req, res) => { // Gun
             .from('products')
             .select('*')
             .eq('id', productId)
-            .eq('umkm_id', umkmId) // Pastikan produk ini milik UMKM yang login
+            .eq('umkm_id', umkmId)
             .single();
 
         if (error && error.code === 'PGRST116') {
@@ -322,6 +324,86 @@ exports.updatePassword = async (req, res) => {
 
     } catch (error) {
         console.error('Kesalahan server saat update password:', error);
+        res.status(500).json({ error: 'Kesalahan server internal.' });
+    }
+};
+
+/**
+ * Controller untuk mendapatkan seluruh feedback produk berdasarkan username UMKM.
+ */
+exports.getAllFeedbackByUmkmUsername = async (req, res) => {
+    const umkmUsername = req.params.username;
+    const { username } = req.user;
+
+    // Hanya izinkan jika username di token sama dengan username di URL
+    if (username !== umkmUsername) {
+        return res.status(403).json({ error: 'Akses ditolak: Anda hanya bisa melihat feedback toko Anda sendiri.' });
+    }
+
+    try {
+        // 1. Ambil UMKM berdasarkan username
+        const { data: umkm, error: umkmError } = await supabase
+            .from('umkms')
+            .select('id, nama_perusahaan_umkm, username')
+            .eq('username', umkmUsername)
+            .single();
+
+        if (umkmError && umkmError.code === 'PGRST116') {
+            return res.status(404).json({ error: 'Toko UMKM tidak ditemukan.' });
+        }
+        if (umkmError) {
+            console.error('Supabase error saat get UMKM by username:', umkmError);
+            return res.status(500).json({ error: 'Kesalahan database saat mengambil profil UMKM.' });
+        }
+
+        // 2. Ambil semua produk milik UMKM ini
+        const { data: products, error: productsError } = await supabase
+            .from('products')
+            .select('id, nama_produk')
+            .eq('umkm_id', umkm.id);
+
+        if (productsError) {
+            console.error('Supabase error saat get products by UMKM:', productsError);
+            return res.status(500).json({ error: 'Gagal mengambil produk UMKM.' });
+        }
+
+        if (!products || products.length === 0) {
+            return res.status(200).json({ feedback: [], products: [] });
+        }
+
+        // 3. Ambil semua feedback untuk produk-produk tersebut
+        const productIds = products.map(p => p.id);
+        const { data: feedback, error: feedbackError } = await supabase
+            .from('feedback')
+            .select('id, product_id, nama_pembeli, rating, komentar, created_at')
+            .in('product_id', productIds)
+            .order('created_at', { ascending: false });
+
+        if (feedbackError) {
+            console.error('Supabase error saat get feedback by UMKM:', feedbackError);
+            return res.status(500).json({ error: 'Gagal mengambil feedback produk.' });
+        }
+
+        // 4. Gabungkan feedback dengan nama produk
+        const productMap = {};
+        products.forEach(p => { productMap[p.id] = p.nama_produk; });
+
+        const feedbackWithProduct = feedback.map(fb => ({
+            ...fb,
+            nama_produk: productMap[fb.product_id] || null
+        }));
+
+        res.status(200).json({
+            umkm: {
+                id: umkm.id,
+                nama_perusahaan_umkm: umkm.nama_perusahaan_umkm,
+                username: umkm.username
+            },
+            feedback: feedbackWithProduct
+        });
+
+    } catch (error) {
+        console.error('Kesalahan server saat get all feedback by UMKM:', error);
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
 };

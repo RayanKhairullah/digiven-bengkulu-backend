@@ -1,9 +1,7 @@
-// authMiddleware.js
-
 const jwt = require('jsonwebtoken');
 
 // Pastikan JWT_SECRET diambil dari environment variables yang sama dengan index.js
-const jwtSecret = process.env.JWT_SECRET || 'fallback_jwt_secret_jika_tidak_ditemukan';
+const jwtSecret = process.env.JWT_SECRET;
 
 /**
  * Middleware untuk mengautentikasi token JWT dari header Authorization.

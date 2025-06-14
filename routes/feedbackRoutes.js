@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const publicController = require('../controllers/publicController'); // Masih menggunakan publicController
+const publicController = require('../controllers/publicController');
+const { feedbackLimiter } = require('../limiter');
 
-// Route untuk mengirimkan feedback produk
-router.post('/:productId', publicController.submitProductFeedback);
+// Lindungi POST route pakai limiter
+router.post('/:productId', feedbackLimiter, publicController.submitProductFeedback);
 
-// Route untuk mendapatkan feedback produk
 router.get('/:productId', publicController.getProductFeedback);
 
 module.exports = router;
