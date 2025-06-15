@@ -9,6 +9,7 @@ const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
     console.error("Error: SUPABASE_URL or SUPABASE_ANON_KEY is not defined.");
+    // Dalam produksi, lebih baik menghentikan proses
     // process.exit(1);
 }
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -43,6 +44,13 @@ exports.getAllUmkms = async (req, res) => {
  */
 exports.getUmkmStoreByUsername = async (req, res) => {
     const umkmUsername = req.params.username;
+
+    // --- Validasi Input ---
+    // Username UMKM diharapkan hanya berisi alfanumerik dan hyphen
+    if (!umkmUsername || !validator.isAlphanumeric(umkmUsername.replace(/-/g, ''), 'en-US')) {
+        return res.status(400).json({ error: 'Username UMKM tidak valid.' });
+    }
+    // --- Akhir Validasi Input ---
 
     try {
         // 1. Ambil detail UMKM berdasarkan username (termasuk kolom baru)
@@ -115,37 +123,40 @@ exports.submitProductFeedback = async (req, res) => {
     const productId = req.params.productId;
     let { nama_pembeli, rating, komentar } = req.body;
 
-    // Validasi input dasar
+    // --- Validasi Input ---
     if (!productId || !rating || !nama_pembeli) {
         return res.status(400).json({
             error: 'ID Produk, nama pembeli, dan rating wajib diisi.'
         });
     }
-
-    // Validasi rating harus berupa angka 1–5
-    if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+    // Validasi ID Produk harus berupa UUID
+    if (!validator.isUUID(productId, 4)) {
+        return res.status(400).json({ error: 'ID Produk tidak valid.' });
+    }
+    // Validasi rating harus berupa angka integer antara 1–5
+    if (!validator.isInt(String(rating), { min: 1, max: 5 })) {
         return res.status(400).json({
-            error: 'Rating harus berupa angka antara 1 dan 5.'
+            error: 'Rating harus berupa angka integer antara 1 dan 5.'
         });
     }
-
-    // Validasi panjang nama dan komentar
-    if (nama_pembeli.length > 50) {
+    // Validasi panjang nama pembeli
+    if (!validator.isLength(nama_pembeli.trim(), { min: 2, max: 50 })) {
         return res.status(400).json({
-            error: 'Nama pembeli tidak boleh lebih dari 50 karakter.'
+            error: 'Nama pembeli harus antara 2 hingga 50 karakter.'
         });
     }
-
-    if (komentar && komentar.length > 500) {
+    // Validasi panjang komentar (jika ada)
+    if (komentar && !validator.isLength(komentar.trim(), { min: 0, max: 500 })) {
         return res.status(400).json({
             error: 'Komentar tidak boleh lebih dari 500 karakter.'
         });
     }
+    // --- Akhir Validasi Input ---
 
     // Sanitasi input (XSS prevention)
-    nama_pembeli = validator.escape(nama_pembeli);
+    nama_pembeli = validator.escape(nama_pembeli.trim());
     if (komentar) {
-        komentar = validator.escape(komentar);
+        komentar = validator.escape(komentar.trim());
     }
 
     try {
@@ -159,7 +170,6 @@ exports.submitProductFeedback = async (req, res) => {
         if (productCheckError && productCheckError.code === 'PGRST116') {
             return res.status(404).json({ error: 'Produk tidak ditemukan.' });
         }
-
         if (productCheckError) {
             console.error('Supabase error saat cek produk untuk feedback:', productCheckError);
             return res.status(500).json({
@@ -173,7 +183,7 @@ exports.submitProductFeedback = async (req, res) => {
             .insert({
                 product_id: productId,
                 nama_pembeli,
-                rating,
+                rating: parseInt(rating), // Pastikan rating disimpan sebagai integer
                 komentar
             })
             .select('*')
@@ -204,6 +214,12 @@ exports.submitProductFeedback = async (req, res) => {
  */
 exports.getProductFeedback = async (req, res) => {
     const productId = req.params.productId;
+
+    // --- Validasi Input ---
+    if (!productId || !validator.isUUID(productId, 4)) {
+        return res.status(400).json({ error: 'ID Produk tidak valid.' });
+    }
+    // --- Akhir Validasi Input ---
 
     try {
         const { data: feedback, error } = await supabase
@@ -238,7 +254,15 @@ exports.getAllProducts = async (req, res) => {
                 deskripsi_produk,
                 harga_produk,
                 gambar_url,
-                created_at
+                created_at,
+                umkms (
+                    nama_perusahaan_umkm,
+                    username,
+                    foto_profil_umkm
+                ),
+                feedback (
+                    rating
+                )
             `)
             .order('created_at', { ascending: false }); // Urutkan dari yang terbaru
 
@@ -252,8 +276,20 @@ exports.getAllProducts = async (req, res) => {
             return res.status(200).json({ products: [] });
         }
 
-        // Tidak perlu menghitung average_rating di sini lagi
-        res.status(200).json({ products: products });
+        // Hitung rata-rata rating untuk setiap produk di daftar publik
+        const productsWithAverageRating = products.map(product => {
+            const ratings = product.feedback.map(f => f.rating);
+            const averageRating = ratings.length > 0
+                ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1)
+                : 0;
+            return {
+                ...product,
+                average_rating: parseFloat(averageRating),
+                feedback: undefined // Hapus array feedback mentah
+            };
+        });
+
+        res.status(200).json({ products: productsWithAverageRating });
 
     } catch (error) {
         console.error('Kesalahan server saat get all products:', error);
@@ -267,6 +303,12 @@ exports.getAllProducts = async (req, res) => {
  */
 exports.getSingleProductDetail = async (req, res) => {
     const productId = req.params.productId;
+
+    // --- Validasi Input ---
+    if (!productId || !validator.isUUID(productId, 4)) {
+        return res.status(400).json({ error: 'ID Produk tidak valid.' });
+    }
+    // --- Akhir Validasi Input ---
 
     try {
         // 1. Ambil detail produk berdasarkan ID, join dengan UMKM dan feedback
@@ -314,7 +356,7 @@ exports.getSingleProductDetail = async (req, res) => {
             nama_produk: product.nama_produk,
             deskripsi_produk: product.deskripsi_produk,
             harga_produk: product.harga_produk,
-            gambar_url: product.gambar_url, // Ini sekarang akan menjadi array
+            gambar_url: product.gambar_url,
             created_at: product.created_at,
             umkm: {
                 id: product.umkms.id,
@@ -324,7 +366,7 @@ exports.getSingleProductDetail = async (req, res) => {
                 nama_pelaku: product.umkms.nama_pelaku,
                 lokasi_perusahaan_umkm: product.umkms.lokasi_perusahaan_umkm,
                 jam_operasional: product.umkms.jam_operasional,
-                foto_profil_umkm: product.umkms.foto_profil_umkm, // Jika kolom ini ada di DB
+                foto_profil_umkm: product.umkms.foto_profil_umkm,
             },
             average_rating: parseFloat(averageRating),
             feedback: product.feedback // Feedback lengkap

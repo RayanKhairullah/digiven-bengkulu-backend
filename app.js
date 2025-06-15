@@ -1,14 +1,19 @@
-require('dotenv').config(); // Muat variabel lingkungan dari file .env
+require('dotenv').config();
 const express = require('express');
-const cors = require('cors'); // Untuk Cross-Origin Resource Sharing
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 
 // ===========================================
 // MIDDLEWARE GLOBAL
 // ===========================================
-app.use(cors()); // Aktifkan CORS untuk semua origin (sesuaikan untuk produksi dengan origin spesifik)
-app.use(express.json()); // Parsing body request sebagai JSON
+app.use(cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true // mengirim/menerima cookie
+}));
+app.use(express.json());
+app.use(cookieParser());
 
 // ===========================================
 // IMPOR DAN GUNAKAN ROUTE
@@ -24,12 +29,21 @@ app.get('/', (req, res) => {
     res.send('API Backend UMKM Bengkulu Berjalan! Kunjungi /api/v1/auth, /api/v1/umkm, atau /api/v1/public');
 });
 
-// Gunakan route yang telah dipisah
-app.use('/api/v1/auth', authRoutes); // Misalnya: /api/v1/auth/register, /api/v1/auth/login
-app.use('/api/v1/umkm', umkmRoutes); // Misalnya: /api/v1/umkm/profile, /api/v1/umkm/products
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/umkm', umkmRoutes);
 app.use('/api/v1/public/products', productPublicRoutes);
-app.use('/api/v1/public/umkms', umkmPublicRoutes); // Misalnya: /api/v1/public/umkms, /api/v1/public/umkms/:username
-app.use('/api/v1/public/feedback', feedbackRoutes); // Misalnya: /api/v1/public/feedback/:productId
+app.use('/api/v1/public/umkms', umkmPublicRoutes);
+app.use('/api/v1/public/feedback', feedbackRoutes);
+
+// ===========================================
+// PENANGANAN ERROR GLOBAL (Middleware)
+// ===========================================
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(err.statusCode).json({
+        error: err.message || 'Terjadi kesalahan internal server.'
+    });
+});
 
 // ===========================================
 // MULAI SERVER
@@ -38,4 +52,5 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
     console.log(`Server Express.js berjalan di port ${PORT}`);
     console.log(`URL Supabase: ${process.env.SUPABASE_URL}`);
+    console.log(`FRONTEND_URL: ${process.env.FRONTEND_URL}`);
 });

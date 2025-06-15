@@ -41,7 +41,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"email\": \"umkm.brand@example.com\",\r\n    \"password\": \"passwordumkm123\",\r\n    \"nama_pelaku\": \"rayn presemt\",\r\n    \"nama_perusahaan_umkm\": \"Kue Nikmat Bengkulu\",\r\n    \"nomor_whatsapp\": \"6283247659870\"\r\n}"
+							"raw": "{\r\n    \"email\": \"mbxxxai@gmail.com\",\r\n    \"password\": \"Pas#mkm123\",\r\n    \"nama_pelaku\": \"rayn presemt\",\r\n    \"nama_perusahaan_umkm\": \"Kue Nikmat Bengkulu\",\r\n    \"nomor_whatsapp\": \"6283247659870\"\r\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/auth/register",
@@ -59,6 +59,61 @@
 					"response": []
 				},
 				{
+					"name": "Verifikasi Email",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/verify-email?token=f743e549-97aa-4f1c-ab5a-329f2afd6a7f",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"verify-email"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "f743e549-97aa-4f1c-ab5a-329f2afd6a7f"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Resend Verification",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"email\": \"mbxxxai@gmail.com\"}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/auth/resend-verification",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"resend-verification"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "POST Login UMKM",
 					"event": [
 						{
@@ -70,6 +125,7 @@
 									"    pm.environment.set(\"jwtToken\", responseJson.token);\r",
 									"    console.log(\"JWT Token:\", responseJson.token);\r",
 									"}\r",
+									"\r",
 									"if (responseJson.umkm_profile && responseJson.umkm_profile.id) {\r",
 									"    pm.environment.set(\"umkmId\", responseJson.umkm_profile.id);\r",
 									"    console.log(\"UMKM ID:\", responseJson.umkm_profile.id);\r",
@@ -99,7 +155,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"email\": \"umkm.brand@example.com\",\r\n    \"password\": \"passwordumkm123\"\r\n}"
+							"raw": "{\r\n    \"email\": \"mbxxxai@gmail.com\",\r\n    \"password\": \"Pas#mkm123\"\r\n}"
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/v1/auth/login",
@@ -117,68 +173,13 @@
 					"response": []
 				},
 				{
-					"name": "Verifikasi Email",
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/auth/verify-email?token=4b8790da-8b22-4c02-8902-919a7ad9a56b",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"auth",
-								"verify-email"
-							],
-							"query": [
-								{
-									"key": "token",
-									"value": "4b8790da-8b22-4c02-8902-919a7ad9a56b"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Resend Verification",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\"email\": \"umkm.brand@example.com\"}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/api/v1/auth/resend-verification",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"v1",
-								"auth",
-								"resend-verification"
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "Forgot Password",
 					"request": {
 						"method": "POST",
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\"email\": \"umkm.brand@example.com\"}",
+							"raw": "{\"email\": \"mbxxxai@gmail.com\"}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -265,6 +266,23 @@
 				},
 				{
 					"name": "GET Profil UMKM",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const res = pm.response.json();\r",
+									"if (res.umkm && res.umkm.id) {\r",
+									"    pm.environment.set(\"umkmId\", res.umkm.id);\r",
+									"}\r",
+									"if (res.umkm && res.umkm.username) {\r",
+									"    pm.environment.set(\"username\", res.umkm.username);\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -290,7 +308,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"currentPassword\": \"passwordumkm123\",\r\n    \"newPassword\": \"password_baru_yang_sangat_kuat\"\r\n}",
+							"raw": "{\r\n    \"currentPassword\": \"Pas#mkm123\",\r\n    \"newPassword\": \"password_baru_yang_sangat_kuat\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -334,7 +352,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"nama_produk\": \"Kue Coklat Spesial\",\r\n    \"deskripsi_produk\": \"kue coklat rasa khas Bengkulu dengan resep rahasia.\",\r\n    \"harga_produk\": 15000,\r\n    \"gambar_url\": [\r\n        \"https://placehold.co/600x400/FF5733/FFFFFF?text=Kue+Coklat+1\",\r\n        \"https://placehold.co/600x400/33FF57/FFFFFF?text=Kue+Coklat+2\",\r\n        \"https://placehold.co/600x400/5733FF/FFFFFF?text=Kue+Coklat+3\"\r\n    ]\r\n}",
+							"raw": "{\r\n    \"nama_produk\": \"Kue Coklat Spesial\",\r\n    \"deskripsi_produk\": \"kue coklat rasa khas Bengkulu dengan resep rahasia.\",\r\n    \"harga_produk\": 15000,\r\n    \"gambar_url\": [\r\n        \"https://placehold.co/600x400/FF5733/FFFFFF?png=Kue+Coklat+1\",\r\n        \"https://placehold.co/600x400/33FF57/FFFFFF?png=Kue+Coklat+2\",\r\n        \"https://placehold.co/600x400/5733FF/FFFFFF?png=Kue+Coklat+3\"\r\n    ]\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -402,6 +420,27 @@
 								"umkm",
 								"products",
 								"{{productId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GET All Feedback By Umkm Username",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/umkm/feedback/{{testUsername}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"umkm",
+								"feedback",
+								"{{testUsername}}"
 							]
 						}
 					},
@@ -547,6 +586,20 @@
 				},
 				{
 					"name": "Submit Product Feedback",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();\r",
+									"if (response.feedback && response.feedback.id) {\r",
+									"    pm.environment.set(\"feedbackId\", response.feedback.id);\r",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
 					"protocolProfileBehavior": {
 						"disabledSystemHeaders": {
 							"content-type": true
@@ -563,7 +616,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"nama_pembeli\": \"Andi Pembeli\",\r\n    \"rating\": 5,\r\n    \"komentar\": \"Produknya sangat enak dan renyah, recommended!\"\r\n}",
+							"raw": "{\r\n    \"nama_pembeli\": \"Udin Pembeli\",\r\n    \"rating\": 3,\r\n    \"komentar\": \"Produknya sangat enak dan renyah, recommended!\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -602,6 +655,27 @@
 								"public",
 								"feedback",
 								"{{productId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Feedback",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/public/feedback/{{feedbackId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"public",
+								"feedback",
+								"{{feedbackId}}"
 							]
 						}
 					},

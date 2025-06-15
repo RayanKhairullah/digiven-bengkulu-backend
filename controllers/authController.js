@@ -1,8 +1,9 @@
 const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer'); // Untuk mengirim email
-const { v4: uuidv4 } = require('uuid'); // Untuk membuat token unik
+const nodemailer = require('nodemailer');
+const { v4: uuidv4 } = require('uuid');
+const validator = require('validator');
 
 // ===========================================
 // INISIALISASI SUPABASE & JWT
@@ -15,35 +16,33 @@ const jwtSecret = process.env.JWT_SECRET;
 if (!supabaseUrl || !supabaseAnonKey || !jwtSecret) {
     console.error("Error: Lingkungan tidak lengkap. Pastikan SUPABASE_URL, SUPABASE_ANON_KEY, dan JWT_SECRET didefinisikan.");
     // Dalam produksi, mungkin lebih baik menghentikan proses
-    // process.exit(1);
+    // process.exit(1); 
+    // Untuk pengembangan, kita mungkin ingin aplikasi tetap berjalan untuk debugging
 }
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // ===========================================
 // KONFIGURASI EMAIL (Contoh dengan Gmail)
-// Anda harus mengganti ini dengan kredensial SMTP Anda
-// Ini adalah placeholder, di produksi gunakan layanan email sebenarnya (SendGrid, Mailgun, dll.)
-// Pastikan untuk mengatur APP_PASSWORD di Gmail jika menggunakan itu, atau layanan lain
-// = ===========================================
+// ===========================================
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: Number(process.env.EMAIL_PORT),
-    secure: process.env.EMAIL_SECURE === 'true',
+    secure: process.env.EMAIL_SECURE === 'true', // true jika port 465, false untuk STARTTLS
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
     },
     tls: {
-        rejectUnauthorized: false
+        // Penting: Hanya gunakan rejectUnauthorized: false di DEVELOPMENT!
+        // Di produksi, pastikan sertifikat SSL host email Anda valid dan hapus ini.
+        rejectUnauthorized: process.env.NODE_ENV !== 'production' ? false : true
     }
 });
 
-
 // Fungsi pembantu untuk mengirim email verifikasi
 const sendVerificationEmail = async (email, token) => {
-    // URL frontend Anda, tempat halaman verifikasi email berada
-    const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${token}`; // Ganti dengan URL frontend Anda
+    const verificationLink = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
     const mailOptions = {
         from: process.env.EMAIL_FROM || 'no-reply@umkmbengkulu.com',
@@ -71,8 +70,7 @@ const sendVerificationEmail = async (email, token) => {
 
 // Fungsi pembantu untuk mengirim email reset password
 const sendResetPasswordEmail = async (email, token) => {
-    // URL frontend Anda, tempat halaman reset password berada
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`; // Ganti dengan URL frontend Anda
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
     const mailOptions = {
         from: process.env.EMAIL_FROM || 'no-reply@umkmbengkulu.com',
@@ -102,14 +100,40 @@ const sendResetPasswordEmail = async (email, token) => {
 /**
  * Controller untuk Pendaftaran UMKM (Signup).
  * Memasukkan user ke tabel users dan umkm ke tabel umkms.
- * Sekarang juga mengirim email verifikasi.
+ * Sekarang juga mengirim email verifikasi dan memiliki validasi input.
  */
 exports.registerUmkm = async (req, res) => {
     const { email, password, nama_pelaku, nama_perusahaan_umkm, nomor_whatsapp } = req.body;
 
+    // --- Validasi Input ---
     if (!email || !password || !nama_pelaku || !nama_perusahaan_umkm || !nomor_whatsapp) {
         return res.status(400).json({ error: 'Semua bidang wajib diisi.' });
     }
+    if (!validator.isEmail(email)) {
+        return res.status(400).json({ error: 'Format email tidak valid.' });
+    }
+    // Contoh validasi kekuatan password: minimal 8 karakter, setidaknya 1 huruf kecil, 1 huruf besar, 1 angka, 1 simbol
+    if (!validator.isStrongPassword(password, {
+        minLength: 8,
+        minLowercase: 1,
+        minUppercase: 1,
+        minNumbers: 1,
+        minSymbols: 1
+    })) {
+        return res.status(400).json({ error: 'Kata sandi harus minimal 8 karakter, mengandung setidaknya satu huruf kecil, satu huruf besar, satu angka, dan satu simbol.' });
+    }
+    if (!validator.isLength(nama_pelaku.trim(), { min: 3, max: 100 })) {
+        return res.status(400).json({ error: 'Nama pelaku harus antara 3 hingga 100 karakter.' });
+    }
+    if (!validator.isLength(nama_perusahaan_umkm.trim(), { min: 3, max: 150 })) {
+        return res.status(400).json({ error: 'Nama perusahaan UMKM harus antara 3 hingga 150 karakter.' });
+    }
+    // Validasi nomor WhatsApp (contoh: format E.164, atau hanya angka)
+    // Di sini saya asumsikan nomor_whatsapp hanya angka
+    if (!validator.isMobilePhone(nomor_whatsapp.replace(/\s/g, ''), 'id-ID') && !validator.isNumeric(nomor_whatsapp)) {
+        return res.status(400).json({ error: 'Nomor WhatsApp tidak valid.' });
+    }
+    // --- Akhir Validasi Input ---
 
     try {
         const { data: existingUser, error: findUserError } = await supabase
@@ -121,32 +145,51 @@ exports.registerUmkm = async (req, res) => {
         if (existingUser) {
             return res.status(409).json({ error: 'Email ini sudah terdaftar.' });
         }
+        // PGRST116 berarti tidak ada data ditemukan, itu normal jika user tidak ada
         if (findUserError && findUserError.code !== 'PGRST116') {
             console.error('Supabase error saat cek user:', findUserError);
-            return res.status(500).json({ error: 'Kesalahan database saat pendaftaran.' });
+            return res.status(500).json({ error: 'Kesalahan database saat pendaftaran user.' });
         }
 
-        let username = nama_perusahaan_umkm.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-        if (!username) {
-            username = `umkm-${Math.random().toString(36).substring(2, 8)}`;
+        // Generate username unik
+        let baseUsername = nama_perusahaan_umkm.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        if (!baseUsername) { // Fallback jika nama perusahaan menghasilkan username kosong
+            baseUsername = 'umkm';
+        }
+        let username = baseUsername;
+        let usernameConflict = true;
+        let attempt = 0;
+        const MAX_ATTEMPTS = 5;
+
+        // Loop untuk memastikan username unik
+        while (usernameConflict && attempt < MAX_ATTEMPTS) {
+            const { data: existingUmkmUsername, error: findUmkmError } = await supabase
+                .from('umkms')
+                .select('id')
+                .eq('username', username)
+                .single();
+
+            if (existingUmkmUsername) {
+                username = `${baseUsername}-${Math.random().toString(36).substring(2, 8)}`;
+                attempt++;
+            } else {
+                usernameConflict = false;
+            }
+
+            if (findUmkmError && findUmkmError.code !== 'PGRST116') {
+                console.error('Supabase error saat cek username UMKM:', findUmkmError);
+                return res.status(500).json({ error: 'Kesalahan database saat pendaftaran UMKM (cek username).' });
+            }
         }
 
-        const { data: existingUmkmUsername, error: findUmkmError } = await supabase
-            .from('umkms')
-            .select('id')
-            .eq('username', username)
-            .single();
+        if (usernameConflict) {
+             console.error('Gagal membuat username unik setelah beberapa kali percobaan untuk:', nama_perusahaan_umkm);
+             return res.status(500).json({ error: 'Tidak dapat membuat username unik. Silakan coba lagi.' });
+        }
 
-        if (existingUmkmUsername) {
-            username = `${username}-${Math.random().toString(36).substring(2, 8)}`;
-        }
-        if (findUmkmError && findUmkmError.code !== 'PGRST116') {
-            console.error('Supabase error saat cek username UMKM:', findUmkmError);
-            return res.status(500).json({ error: 'Kesalahan database saat pendaftaran UMKM.' });
-        }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const verificationToken = uuidv4(); // Buat token verifikasi unik
+        const verificationToken = uuidv4();
         const tokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // Token berlaku 1 jam
 
         const { data: newUser, error: insertUserError } = await supabase
@@ -154,7 +197,7 @@ exports.registerUmkm = async (req, res) => {
             .insert({
                 email,
                 password: hashedPassword,
-                is_verified: false, // Default false
+                is_verified: false,
                 verification_token: verificationToken,
                 verification_token_expires_at: tokenExpiresAt
             })
@@ -179,18 +222,18 @@ exports.registerUmkm = async (req, res) => {
             .single();
 
         if (insertUmkmError) {
+            // Rollback user creation if UMKM profile insertion fails
             await supabase.from('users').delete().eq('id', newUser.id);
             console.error('Supabase error saat insert UMKM:', insertUmkmError);
             return res.status(500).json({ error: 'Gagal mendaftar detail UMKM.' });
         }
 
-        // Kirim email verifikasi
         await sendVerificationEmail(newUser.email, verificationToken);
 
         res.status(201).json({
             message: 'Registrasi UMKM berhasil! Silakan cek email Anda untuk verifikasi.',
             user: { id: newUser.id, email: newUser.email, is_verified: false },
-            umkm_profile: newUmkm
+            umkm_profile: newUmkm // Hanya untuk debugging, tidak direkomendasikan di produksi
         });
 
     } catch (error) {
@@ -201,22 +244,29 @@ exports.registerUmkm = async (req, res) => {
 
 /**
  * Controller untuk Login UMKM.
+ * Mengirim token JWT sebagai HTTP-only cookie.
  */
 exports.loginUmkm = async (req, res) => {
     const { email, password } = req.body;
 
+    // --- Validasi Input ---
     if (!email || !password) {
         return res.status(400).json({ error: 'Email dan password wajib diisi.' });
     }
+    if (!validator.isEmail(email)) {
+        return res.status(400).json({ error: 'Format email tidak valid.' });
+    }
+    // --- Akhir Validasi Input ---
 
     try {
         const { data: user, error: findUserError } = await supabase
             .from('users')
-            .select('id, email, password, is_verified') // Ambil is_verified
+            .select('id, email, password, is_verified')
             .eq('email', email)
             .single();
 
         if (findUserError && findUserError.code === 'PGRST116') {
+            // Generic message to prevent user enumeration
             return res.status(401).json({ error: 'Kredensial tidak valid.' });
         }
         if (findUserError) {
@@ -229,7 +279,6 @@ exports.loginUmkm = async (req, res) => {
             return res.status(401).json({ error: 'Kredensial tidak valid.' });
         }
 
-        // Cek status verifikasi email
         if (!user.is_verified) {
             return res.status(403).json({ error: 'Email Anda belum diverifikasi. Silakan cek email Anda atau minta kirim ulang verifikasi.' });
         }
@@ -241,8 +290,8 @@ exports.loginUmkm = async (req, res) => {
             .single();
 
         if (findUmkmError) {
-             console.error('Supabase error saat login (find UMKM profile):', findUmkmError);
-             return res.status(500).json({ error: 'Profil UMKM tidak ditemukan atau kesalahan database.' });
+            console.error('Supabase error saat login (find UMKM profile):', findUmkmError);
+            return res.status(500).json({ error: 'Profil UMKM tidak ditemukan atau kesalahan database.' });
         }
 
         const token = jwt.sign(
@@ -251,11 +300,20 @@ exports.loginUmkm = async (req, res) => {
                 email: user.email,
                 umkmId: umkmProfile.id,
                 username: umkmProfile.username,
-                is_verified: user.is_verified // Sertakan status verifikasi di token
+                is_verified: user.is_verified
             },
             jwtSecret,
-            { expiresIn: '1h' }
+            { expiresIn: '1h' } // Token berlaku 1 jam
         );
+
+        // Set JWT sebagai HTTP-only cookie
+        // secure: true hanya jika HTTPS (di produksi), sameSite: 'Strict' untuk CSRF protection
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', // true di produksi (HTTPS)
+            sameSite: 'strict', // Melindungi dari serangan CSRF
+            maxAge: 60 * 60 * 1000 // 1 jam (dalam milidetik)
+        });
 
         res.status(200).json({
             message: 'Login berhasil!',
@@ -278,14 +336,17 @@ exports.loginUmkm = async (req, res) => {
  * Controller untuk memverifikasi email user.
  */
 exports.verifyEmail = async (req, res) => {
-    const { token } = req.query; // Ambil token dari query parameter URL
+    const { token } = req.query;
 
     if (!token) {
         return res.status(400).json({ error: 'Token verifikasi tidak ditemukan.' });
     }
+    // Token UUID harus memiliki format yang valid
+    if (!validator.isUUID(token, 4)) {
+        return res.status(400).json({ error: 'Format token verifikasi tidak valid.' });
+    }
 
     try {
-        // Cari user berdasarkan token dan pastikan belum kedaluwarsa
         const { data: user, error } = await supabase
             .from('users')
             .select('id, email, is_verified, verification_token_expires_at')
@@ -304,20 +365,18 @@ exports.verifyEmail = async (req, res) => {
             return res.status(400).json({ message: 'Email ini sudah diverifikasi sebelumnya.' });
         }
 
-        // Cek masa berlaku token
         const now = new Date();
         const tokenExpiry = new Date(user.verification_token_expires_at);
         if (now > tokenExpiry) {
             return res.status(400).json({ error: 'Token verifikasi telah kadaluarsa. Mohon minta token baru.' });
         }
 
-        // Update status verifikasi user
         const { error: updateError } = await supabase
             .from('users')
             .update({
                 is_verified: true,
-                verification_token: null, // Hapus token setelah digunakan
-                verification_token_expires_at: null // Hapus waktu kadaluarsa
+                verification_token: null,
+                verification_token_expires_at: null
             })
             .eq('id', user.id);
 
@@ -341,9 +400,14 @@ exports.verifyEmail = async (req, res) => {
 exports.resendVerificationEmail = async (req, res) => {
     const { email } = req.body;
 
+    // --- Validasi Input ---
     if (!email) {
         return res.status(400).json({ error: 'Email wajib diisi.' });
     }
+    if (!validator.isEmail(email)) {
+        return res.status(400).json({ error: 'Format email tidak valid.' });
+    }
+    // --- Akhir Validasi Input ---
 
     try {
         const { data: user, error } = await supabase
@@ -353,7 +417,8 @@ exports.resendVerificationEmail = async (req, res) => {
             .single();
 
         if (error && error.code === 'PGRST116') {
-            return res.status(404).json({ error: 'User tidak ditemukan.' }); // Lebih baik respons generik di produksi
+            // Generic message to prevent user enumeration
+            return res.status(404).json({ error: 'Email tidak ditemukan.' }); // Atau lebih baik: 'Jika email terdaftar, link akan dikirim.'
         }
         if (error) {
             console.error('Supabase error saat kirim ulang verifikasi (find user):', error);
@@ -364,7 +429,6 @@ exports.resendVerificationEmail = async (req, res) => {
             return res.status(400).json({ message: 'Email ini sudah diverifikasi.' });
         }
 
-        // Buat token verifikasi baru
         const newVerificationToken = uuidv4();
         const newTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // Token berlaku 1 jam
 
@@ -381,7 +445,6 @@ exports.resendVerificationEmail = async (req, res) => {
             return res.status(500).json({ error: 'Gagal mengirim ulang email verifikasi.' });
         }
 
-        // Kirim email verifikasi baru
         await sendVerificationEmail(user.email, newVerificationToken);
 
         res.status(200).json({ message: 'Email verifikasi baru telah dikirim. Silakan cek kotak masuk Anda.' });
@@ -399,9 +462,14 @@ exports.resendVerificationEmail = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
 
+    // --- Validasi Input ---
     if (!email) {
         return res.status(400).json({ error: 'Email wajib diisi.' });
     }
+    if (!validator.isEmail(email)) {
+        return res.status(400).json({ error: 'Format email tidak valid.' });
+    }
+    // --- Akhir Validasi Input ---
 
     try {
         const { data: user, error } = await supabase
@@ -412,6 +480,7 @@ exports.forgotPassword = async (req, res) => {
 
         // Penting: Selalu kembalikan respons sukses generik untuk mencegah user enumeration
         if (error && error.code === 'PGRST116') {
+            console.warn('Permintaan lupa password untuk email tidak terdaftar:', email);
             return res.status(200).json({ message: 'Jika email Anda terdaftar, link reset password telah dikirimkan.' });
         }
         if (error) {
@@ -419,8 +488,16 @@ exports.forgotPassword = async (req, res) => {
             return res.status(500).json({ error: 'Kesalahan database.' });
         }
 
-        // Hapus token reset yang ada untuk user ini (untuk keamanan)
-        await supabase.from('password_reset_tokens').delete().eq('user_id', user.id);
+        // Hapus token reset yang ada untuk user ini (untuk keamanan, memastikan hanya 1 token aktif)
+        const { error: deleteExistingTokenError } = await supabase
+            .from('password_reset_tokens')
+            .delete()
+            .eq('user_id', user.id);
+
+        if (deleteExistingTokenError) {
+            console.warn('Gagal menghapus token reset password lama untuk user:', user.id, deleteExistingTokenError);
+            // Lanjutkan proses meskipun gagal menghapus token lama, tapi log peringatan
+        }
 
         // Buat token reset password baru
         const resetToken = uuidv4();
@@ -439,7 +516,6 @@ exports.forgotPassword = async (req, res) => {
             return res.status(500).json({ error: 'Gagal memproses permintaan reset password.' });
         }
 
-        // Kirim email reset password
         await sendResetPasswordEmail(user.email, resetToken);
 
         res.status(200).json({ message: 'Jika email Anda terdaftar, link reset password telah dikirimkan.' });
@@ -456,12 +532,26 @@ exports.forgotPassword = async (req, res) => {
 exports.resetPassword = async (req, res) => {
     const { token, newPassword } = req.body;
 
+    // --- Validasi Input ---
     if (!token || !newPassword) {
         return res.status(400).json({ error: 'Token dan kata sandi baru wajib diisi.' });
     }
+    if (!validator.isUUID(token, 4)) {
+        return res.status(400).json({ error: 'Format token reset kata sandi tidak valid.' });
+    }
+    // Validasi kekuatan password baru
+    if (!validator.isStrongPassword(newPassword, {
+        minLength: 8,
+        minLowercase: 1,
+        minUppercase: 1,
+        minNumbers: 1,
+        minSymbols: 1
+    })) {
+        return res.status(400).json({ error: 'Kata sandi baru harus minimal 8 karakter, mengandung setidaknya satu huruf kecil, satu huruf besar, satu angka, dan satu simbol.' });
+    }
+    // --- Akhir Validasi Input ---
 
     try {
-        // Cari token di tabel password_reset_tokens dan pastikan belum kedaluwarsa
         const { data: resetTokenData, error: findTokenError } = await supabase
             .from('password_reset_tokens')
             .select('id, user_id, expires_at')
@@ -469,24 +559,21 @@ exports.resetPassword = async (req, res) => {
             .single();
 
         if (findTokenError && findTokenError.code === 'PGRST116') {
-            return res.status(400).json({ error: 'Token reset kata sandi tidak valid.' });
+            return res.status(400).json({ error: 'Token reset kata sandi tidak valid atau sudah kadaluarsa.' });
         }
         if (findTokenError) {
             console.error('Supabase error saat reset password (find token):', findTokenError);
-            return res.status(500).json({ error: 'Kesalahan database.' });
+            return res.status(500).json({ error: 'Kesalahan database saat reset password.' });
         }
 
-        // Cek masa berlaku token
         const now = new Date();
         const tokenExpiry = new Date(resetTokenData.expires_at);
         if (now > tokenExpiry) {
-            return res.status(400).json({ error: 'Token reset kata sandi telah kadaluarsa.' });
+            return res.status(400).json({ error: 'Token reset kata sandi telah kadaluarsa. Mohon minta token baru.' });
         }
 
-        // Hash kata sandi baru
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-        // Update password user
         const { error: updatePasswordError } = await supabase
             .from('users')
             .update({ password: hashedPassword })
@@ -497,7 +584,6 @@ exports.resetPassword = async (req, res) => {
             return res.status(500).json({ error: 'Gagal mereset kata sandi.' });
         }
 
-        // Hapus token setelah berhasil digunakan
         const { error: deleteTokenError } = await supabase
             .from('password_reset_tokens')
             .delete()

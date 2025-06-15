@@ -1,13 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const publicController = require('../controllers/publicController');
+const { generalAuthLimiter } = require('../Middlewares/limiter');
 
-// Route untuk mendapatkan SEMUA PRODUK dari SEMUA UMKM
-// Endpoint: /api/v1/public/products
-router.get('/', publicController.getAllProducts);
-
-// Route untuk mendapatkan DETAIL SATU PRODUK berdasarkan ID
-// Endpoint: /api/v1/public/products/:productId
-router.get('/:productId', publicController.getSingleProductDetail);
+// Route untuk mendapatkan SEMUA PRODUK dari SEMUA UMKM dan detail product by id
+router.get('/', generalAuthLimiter, publicController.getAllProducts);
+router.get('/:productId', generalAuthLimiter, publicController.getSingleProductDetail);
 
 module.exports = router;

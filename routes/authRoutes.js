@@ -1,25 +1,15 @@
-// routes/authRoutes.js
-
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const { generalAuthLimiter, strictAuthLimiter } = require('../Middlewares/limiter');
 
-// Route untuk pendaftaran UMKM baru
-router.post('/register', authController.registerUmkm);
+// Route untuk auth UMKM baru with strictAuthLimiter
+router.post('/register', strictAuthLimiter, authController.registerUmkm);
+router.get('/verify-email', generalAuthLimiter, authController.verifyEmail);
+router.post('/resend-verification', strictAuthLimiter, authController.resendVerificationEmail);
 
-// Route untuk login UMKM
-router.post('/login', authController.loginUmkm);
-
-// Route untuk verifikasi email
-router.get('/verify-email', authController.verifyEmail);
-
-// Route untuk mengirim ulang email verifikasi
-router.post('/resend-verification', authController.resendVerificationEmail);
-
-// Route untuk permintaan lupa kata sandi
-router.post('/forgot-password', authController.forgotPassword);
-
-// Route untuk mereset kata sandi
-router.post('/reset-password', authController.resetPassword);
+router.post('/login', strictAuthLimiter, authController.loginUmkm);
+router.post('/forgot-password', strictAuthLimiter, authController.forgotPassword);
+router.post('/reset-password', generalAuthLimiter, authController.resetPassword);
 
 module.exports = router;
