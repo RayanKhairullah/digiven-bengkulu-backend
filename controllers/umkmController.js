@@ -145,7 +145,6 @@ exports.updateUmkmProfile = [checkEmailVerified, async (req, res) => {
     }
 }];
 
-
 /**
  * Controller untuk menambahkan produk baru oleh UMKM.
  */
@@ -518,3 +517,10 @@ exports.getAllFeedbackByUmkmUsername = async (req, res) => {
         res.status(500).json({ error: 'Kesalahan server internal.' });
     }
 };
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(err.statusCode || 500).json({
+    error: err.message || 'Terjadi kesalahan internal server.'
+  });
+});
